@@ -1,0 +1,351 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "Send_approval_email": {
+                "type": "ApiConnectionWebhook",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "referenceName": "office365"
+                        }
+                    },
+                    "body": {
+                        "NotificationUrl": "@{listCallbackUrl()}",
+                        "Message": {
+                            "To": "kevinc@magenic.com;kdcainday@gmail.com",
+                            "Subject": "EYMP Approval Request",
+                            "Options": "Approve, Reject",
+                            "Body": "Service Initiation for @{variables('userName')} to @{variables('destination')} is waiting for your approval",
+                            "Importance": "Normal",
+                            "HideHTMLMessage": true,
+                            "ShowHTMLConfirmationDialog": true
+                        }
+                    },
+                    "path": "/approvalmail/$subscriptions"
+                },
+                "runAfter": {
+                    "Initialize_variable_3": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Execute_Query": {
+                "type": "ServiceProvider",
+                "inputs": {
+                    "parameters": {
+                        "query": "SELECT * FROM [dbo].[ServiceInitiation] WHERE ServiceInitiationId = @{triggerBody()?['serviceInitiationId']}"
+                    },
+                    "serviceProviderConfiguration": {
+                        "connectionName": "sql-2",
+                        "operationId": "executeQuery",
+                        "serviceProviderId": "/serviceProviders/sql"
+                    }
+                },
+                "runAfter": {}
+            },
+            "Execute_Query_2": {
+                "type": "ServiceProvider",
+                "inputs": {
+                    "parameters": {
+                        "query": "SELECT * FROM [dbo].[Users] WHERE UserId = @{variables('UserId')}"
+                    },
+                    "serviceProviderConfiguration": {
+                        "connectionName": "sql-2",
+                        "operationId": "executeQuery",
+                        "serviceProviderId": "/serviceProviders/sql"
+                    }
+                },
+                "runAfter": {
+                    "Initialize_variable": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_variable": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "userId",
+                            "type": "string",
+                            "value": "@{outputs('Execute_Query')?['body'][0][0].UserId}"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Condition_2": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_variable_3": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "userName",
+                            "type": "string",
+                            "value": "@{concat(variables('user').FirstName, ' ', variables('user').LastName)}"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Initialize_variable_4": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_variable_2": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "destination",
+                            "type": "string",
+                            "value": "@{outputs('Execute_Query')?['body'][0][0].Destination}"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Condition_2": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_variable_4": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "user",
+                            "type": "object",
+                            "value": "@outputs('Execute_Query_2')?['body'][0][0]"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Condition_3": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Condition_2": {
+                "type": "If",
+                "expression": {
+                    "and": [
+                        {
+                            "greater": [
+                                "@length(variables('querySI')[0])",
+                                0
+                            ]
+                        }
+                    ]
+                },
+                "actions": {},
+                "runAfter": {
+                    "Initialize_variable_6": [
+                        "Succeeded"
+                    ]
+                },
+                "else": {
+                    "actions": {
+                        "Response": {
+                            "type": "Response",
+                            "kind": "http",
+                            "inputs": {
+                                "statusCode": 404,
+                                "body": "SI record not found"
+                            },
+                            "runAfter": {}
+                        }
+                    }
+                }
+            },
+            "Condition_3": {
+                "type": "If",
+                "expression": {
+                    "and": [
+                        {
+                            "not": {
+                                "equals": [
+                                    "@length(variables('queryUser')[0])",
+                                    0
+                                ]
+                            }
+                        }
+                    ]
+                },
+                "actions": {
+                    "Response_2": {
+                        "type": "Response",
+                        "kind": "http",
+                        "inputs": {
+                            "statusCode": 200
+                        },
+                        "runAfter": {}
+                    }
+                },
+                "runAfter": {
+                    "Initialize_variable_7": [
+                        "Succeeded"
+                    ]
+                },
+                "else": {
+                    "actions": {
+                        "Response_3": {
+                            "type": "Response",
+                            "kind": "http",
+                            "inputs": {
+                                "statusCode": 404,
+                                "body": "User record not found"
+                            },
+                            "runAfter": {}
+                        }
+                    }
+                }
+            },
+            "Initialize_variable_6": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "querySI",
+                            "type": "array",
+                            "value": "@outputs('Execute_Query')?['body']"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Execute_Query": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_variable_7": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "queryUser",
+                            "type": "array",
+                            "value": "@outputs('Execute_Query_2')?['body']"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Execute_Query_2": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Until": {
+                "type": "Until",
+                "expression": "@greaterOrEquals(variables('approverCount'), 2)",
+                "limit": {
+                    "count": 60,
+                    "timeout": "PT1H"
+                },
+                "actions": {
+                    "Set_variable_3": {
+                        "type": "SetVariable",
+                        "inputs": {
+                            "name": "approvalStatus",
+                            "value": "@if(equals(body('Send_approval_email')?['SelectedOption'],'True'),1,0)"
+                        },
+                        "runAfter": {}
+                    },
+                    "Execute_Query_4": {
+                        "type": "ServiceProvider",
+                        "inputs": {
+                            "parameters": {
+                                "query": "INSERT INTO [dbo].[ServiceInitiationApproval] VALUES (@{triggerBody()?['serviceInitiationId']}, @{variables('userId')},'@{body('Send_approval_email')?['UserEmailAddress']}', @{variables('approvalStatus')}, GETUTCDATE())"
+                            },
+                            "serviceProviderConfiguration": {
+                                "connectionName": "sql-2",
+                                "operationId": "executeQuery",
+                                "serviceProviderId": "/serviceProviders/sql"
+                            }
+                        },
+                        "runAfter": {
+                            "Increment_variable": [
+                                "Succeeded"
+                            ]
+                        }
+                    },
+                    "Increment_variable": {
+                        "type": "IncrementVariable",
+                        "inputs": {
+                            "name": "approverCount",
+                            "value": 1
+                        },
+                        "runAfter": {
+                            "Set_variable_3": [
+                                "Succeeded"
+                            ]
+                        }
+                    }
+                },
+                "runAfter": {
+                    "Initialize_variable_5": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_variable_8": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "approverCount",
+                            "type": "integer",
+                            "value": 0
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Send_approval_email": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_variable_5": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "approvalStatus",
+                            "type": "integer",
+                            "value": 0
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Initialize_variable_8": [
+                        "Succeeded"
+                    ]
+                }
+            }
+        },
+        "triggers": {
+            "manual": {
+                "type": "Request",
+                "kind": "Http",
+                "inputs": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "serviceInitiationId": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "method": "POST"
+                }
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {}
+    },
+    "kind": "Stateful"
+}

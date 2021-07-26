@@ -1,10 +1,123 @@
 {
-  "definition": {
-    "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
-    "actions": {},
-    "contentVersion": "1.0.0.0",
-    "outputs": {},
-    "triggers": {}
-  },
-  "kind": "Stateful"
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "Execute_Query": {
+                "type": "ServiceProvider",
+                "inputs": {
+                    "parameters": {
+                        "query": "INSERT INTO [dbo].[ServiceInitiation] VALUES (@{triggerBody()?['userId']},'@{triggerBody()?['destination']}')"
+                    },
+                    "serviceProviderConfiguration": {
+                        "connectionName": "sql-2",
+                        "operationId": "executeQuery",
+                        "serviceProviderId": "/serviceProviders/sql"
+                    }
+                },
+                "runAfter": {}
+            },
+            "Execute_Query_2": {
+                "type": "ServiceProvider",
+                "inputs": {
+                    "parameters": {
+                        "query": "SELECT ServiceInitiationId FROM [dbo].[ServiceInitiation] ORDER BY [ServiceInitiationId] DESC"
+                    },
+                    "serviceProviderConfiguration": {
+                        "connectionName": "sql-2",
+                        "operationId": "executeQuery",
+                        "serviceProviderId": "/serviceProviders/sql"
+                    }
+                },
+                "runAfter": {
+                    "Execute_Query": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Initialize_variable": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "serviceInitiationId",
+                            "type": "object"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Execute_Query_2": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "For_each": {
+                "type": "Foreach",
+                "foreach": "@outputs('Execute_Query_2')?['body']",
+                "actions": {
+                    "Set_variable": {
+                        "type": "SetVariable",
+                        "inputs": {
+                            "name": "ServiceInitiationId",
+                            "value": "@items('For_each')[0]"
+                        },
+                        "runAfter": {}
+                    }
+                },
+                "runAfter": {
+                    "Initialize_variable": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "HTTP": {
+                "type": "Http",
+                "inputs": {
+                    "method": "POST",
+                    "uri": "http://localhost:7071/api/Send-Approval/triggers/manual/invoke?api-version=2020-05-01-preview&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=HJ5OynhmHx3ziHN1bfArxUgsSgbW-kDKBZ4nA9ODWnE",
+                    "body": "@variables('serviceInitiationId')"
+                },
+                "runAfter": {
+                    "For_each": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Response": {
+                "type": "Response",
+                "kind": "http",
+                "inputs": {
+                    "statusCode": "@outputs('HTTP')['statusCode']",
+                    "headers": "@outputs('HTTP')['headers']",
+                    "body": "@body('HTTP')"
+                },
+                "runAfter": {
+                    "HTTP": [
+                        "Succeeded"
+                    ]
+                }
+            }
+        },
+        "triggers": {
+            "manual": {
+                "type": "Request",
+                "kind": "Http",
+                "inputs": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "userId": {
+                                "type": "integer"
+                            },
+                            "destination": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {}
+    },
+    "kind": "Stateful"
 }

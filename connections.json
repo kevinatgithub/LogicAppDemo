@@ -1,0 +1,38 @@
+{
+  "serviceProviderConnections": {
+    "sql": {
+      "parameterValues": {
+        "connectionString": "@appsetting('sql_connectionString')"
+      },
+      "serviceProvider": {
+        "id": "/serviceProviders/sql"
+      },
+      "displayName": "Localhost"
+    },
+    "sql-2": {
+      "parameterValues": {
+        "connectionString": "@appsetting('sql_12_connectionString')"
+      },
+      "serviceProvider": {
+        "id": "/serviceProviders/sql"
+      },
+      "displayName": "localhost"
+    }
+  },
+  "managedApiConnections": {
+    "office365": {
+      "api": {
+        "id": "/subscriptions/524e5125-dbbd-4c97-9445-c0869e65b3e2/providers/Microsoft.Web/locations/southeastasia/managedApis/office365"
+      },
+      "connection": {
+        "id": "/subscriptions/524e5125-dbbd-4c97-9445-c0869e65b3e2/resourceGroups/PersonalDevelopment-ResourceGroup/providers/Microsoft.Web/connections/office365"
+      },
+      "connectionRuntimeUrl": "https://ef561467f8187ef2.07.common.logic-southeastasia.azure-apihub.net/apim/office365/ca7213ae6d584541a2d8eb27fdda09cf/",
+      "authentication": {
+        "type": "Raw",
+        "scheme": "Key",
+        "parameter": "@appsetting('office365-connectionKey')"
+      }
+    }
+  }
+}
