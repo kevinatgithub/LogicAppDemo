@@ -1,0 +1,95 @@
+{
+    "definition": {
+        "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+        "actions": {
+            "Send_approval_email": {
+                "type": "ApiConnectionWebhook",
+                "inputs": {
+                    "host": {
+                        "connection": {
+                            "referenceName": "office365"
+                        }
+                    },
+                    "body": {
+                        "NotificationUrl": "@{listCallbackUrl()}",
+                        "Message": {
+                            "To": "@triggerBody()?['emailAddress']",
+                            "Subject": "EYMP Approval Request",
+                            "Options": "Approve, Reject",
+                            "Body": "@triggerBody()?['message']",
+                            "Importance": "Normal",
+                            "HideHTMLMessage": false,
+                            "ShowHTMLConfirmationDialog": true
+                        }
+                    },
+                    "path": "/approvalmail/$subscriptions"
+                },
+                "runAfter": {}
+            },
+            "Initialize_variable": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "response",
+                            "type": "integer",
+                            "value": "@if(equals(body('Send_approval_email')?['SelectedOption'],'Approve'),1,0)"
+                        }
+                    ]
+                },
+                "runAfter": {
+                    "Send_approval_email": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Execute_Query": {
+                "type": "ServiceProvider",
+                "inputs": {
+                    "parameters": {
+                        "query": "INSERT INTO [dbo].[ServiceInitiationApproval] VALUES (@{triggerBody()?['serviceInitiationId']}, @{triggerBody()?['userId']},'@{triggerBody()?['emailAddress']}', @{variables('response')}, GETUTCDATE())"
+                    },
+                    "serviceProviderConfiguration": {
+                        "connectionName": "sql-2",
+                        "operationId": "executeQuery",
+                        "serviceProviderId": "/serviceProviders/sql"
+                    }
+                },
+                "runAfter": {
+                    "Initialize_variable": [
+                        "Succeeded"
+                    ]
+                }
+            }
+        },
+        "triggers": {
+            "manual": {
+                "type": "Request",
+                "kind": "Http",
+                "inputs": {
+                    "schema": {
+                        "type": "object",
+                        "properties": {
+                            "emailAddress": {
+                                "type": "string"
+                            },
+                            "serviceInitiationId": {
+                                "type": "integer"
+                            },
+                            "message": {
+                                "type": "string"
+                            },
+                            "userId": {
+                                "type": "integer"
+                            }
+                        }
+                    },
+                    "method": "POST"
+                }
+            }
+        },
+        "contentVersion": "1.0.0.0",
+        "outputs": {}
+    },
+    "kind": "Stateful"
+}

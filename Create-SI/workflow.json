@@ -40,7 +40,8 @@
                     "variables": [
                         {
                             "name": "serviceInitiationId",
-                            "type": "object"
+                            "type": "integer",
+                            "value": "@outputs('Execute_Query_2')?['body'][0][0].ServiceInitiationId"
                         }
                     ]
                 },
@@ -50,34 +51,17 @@
                     ]
                 }
             },
-            "For_each": {
-                "type": "Foreach",
-                "foreach": "@outputs('Execute_Query_2')?['body']",
-                "actions": {
-                    "Set_variable": {
-                        "type": "SetVariable",
-                        "inputs": {
-                            "name": "ServiceInitiationId",
-                            "value": "@items('For_each')[0]"
-                        },
-                        "runAfter": {}
-                    }
-                },
-                "runAfter": {
-                    "Initialize_variable": [
-                        "Succeeded"
-                    ]
-                }
-            },
             "HTTP": {
                 "type": "Http",
                 "inputs": {
                     "method": "POST",
-                    "uri": "http://localhost:7071/api/Send-Approval/triggers/manual/invoke?api-version=2020-05-01-preview&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=HJ5OynhmHx3ziHN1bfArxUgsSgbW-kDKBZ4nA9ODWnE",
-                    "body": "@variables('serviceInitiationId')"
+                    "uri": "http://localhost:7071/api/Send-Approval/triggers/manual/invoke?api-version=2020-05-01-preview&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=PRABTrN2bHrP2fyzPY416HdkEFQliGT40Yhkc5Sznuo",
+                    "body": {
+                        "serviceInitiationId": "@variables('serviceInitiationId')"
+                    }
                 },
                 "runAfter": {
-                    "For_each": [
+                    "Initialize_variable": [
                         "Succeeded"
                     ]
                 }

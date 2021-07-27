@@ -2,34 +2,6 @@
     "definition": {
         "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
         "actions": {
-            "Send_approval_email": {
-                "type": "ApiConnectionWebhook",
-                "inputs": {
-                    "host": {
-                        "connection": {
-                            "referenceName": "office365"
-                        }
-                    },
-                    "body": {
-                        "NotificationUrl": "@{listCallbackUrl()}",
-                        "Message": {
-                            "To": "kevinc@magenic.com;kdcainday@gmail.com",
-                            "Subject": "EYMP Approval Request",
-                            "Options": "Approve, Reject",
-                            "Body": "Service Initiation for @{variables('userName')} to @{variables('destination')} is waiting for your approval",
-                            "Importance": "Normal",
-                            "HideHTMLMessage": true,
-                            "ShowHTMLConfirmationDialog": true
-                        }
-                    },
-                    "path": "/approvalmail/$subscriptions"
-                },
-                "runAfter": {
-                    "Initialize_variable_3": [
-                        "Succeeded"
-                    ]
-                }
-            },
             "Execute_Query": {
                 "type": "ServiceProvider",
                 "inputs": {
@@ -79,7 +51,7 @@
                     ]
                 }
             },
-            "Initialize_variable_3": {
+            "userName": {
                 "type": "InitializeVariable",
                 "inputs": {
                     "variables": [
@@ -91,7 +63,7 @@
                     ]
                 },
                 "runAfter": {
-                    "Initialize_variable_4": [
+                    "user": [
                         "Succeeded"
                     ]
                 }
@@ -113,7 +85,7 @@
                     ]
                 }
             },
-            "Initialize_variable_4": {
+            "user": {
                 "type": "InitializeVariable",
                 "inputs": {
                     "variables": [
@@ -239,89 +211,92 @@
                     ]
                 }
             },
-            "Until": {
-                "type": "Until",
-                "expression": "@greaterOrEquals(variables('approverCount'), 2)",
-                "limit": {
-                    "count": 60,
-                    "timeout": "PT1H"
+            "approvalEmails": {
+                "type": "InitializeVariable",
+                "inputs": {
+                    "variables": [
+                        {
+                            "name": "approvalEmails",
+                            "type": "array",
+                            "value": [
+                                "kevinc@magenic.com",
+                                "kdcainday@gmail.com"
+                            ]
+                        }
+                    ]
                 },
+                "runAfter": {
+                    "userName": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "For_each": {
+                "type": "Foreach",
+                "foreach": "@variables('approvalEmails')",
                 "actions": {
-                    "Set_variable_3": {
-                        "type": "SetVariable",
+                    "HTTP": {
+                        "type": "Http",
                         "inputs": {
-                            "name": "approvalStatus",
-                            "value": "@if(equals(body('Send_approval_email')?['SelectedOption'],'True'),1,0)"
-                        },
-                        "runAfter": {}
-                    },
-                    "Execute_Query_4": {
-                        "type": "ServiceProvider",
-                        "inputs": {
-                            "parameters": {
-                                "query": "INSERT INTO [dbo].[ServiceInitiationApproval] VALUES (@{triggerBody()?['serviceInitiationId']}, @{variables('userId')},'@{body('Send_approval_email')?['UserEmailAddress']}', @{variables('approvalStatus')}, GETUTCDATE())"
-                            },
-                            "serviceProviderConfiguration": {
-                                "connectionName": "sql-2",
-                                "operationId": "executeQuery",
-                                "serviceProviderId": "/serviceProviders/sql"
+                            "method": "POST",
+                            "uri": "http://localhost:7071/api/Send-Approval-Handle-Response/triggers/manual/invoke?api-version=2020-05-01-preview&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=OXHiIZ9r1gQ-bibohoUcan1NHGRM2_kdZ737APcJRnY",
+                            "body": {
+                                "serviceInitiationId": "@triggerBody()?['serviceInitiationId']",
+                                "userId": "@variables('userId')",
+                                "emailAddress": "@{items('For_each')}",
+                                "message": "@{variables('message')}"
                             }
                         },
                         "runAfter": {
-                            "Increment_variable": [
+                            "Set_variable": [
                                 "Succeeded"
                             ]
                         }
                     },
-                    "Increment_variable": {
-                        "type": "IncrementVariable",
+                    "Set_variable": {
+                        "type": "SetVariable",
                         "inputs": {
-                            "name": "approverCount",
-                            "value": 1
+                            "name": "emailAddress",
+                            "value": "@{items('For_each')}"
                         },
-                        "runAfter": {
-                            "Set_variable_3": [
-                                "Succeeded"
-                            ]
-                        }
+                        "runAfter": {}
                     }
                 },
                 "runAfter": {
-                    "Initialize_variable_5": [
+                    "emailAddress": [
                         "Succeeded"
                     ]
                 }
             },
-            "Initialize_variable_8": {
+            "message": {
                 "type": "InitializeVariable",
                 "inputs": {
                     "variables": [
                         {
-                            "name": "approverCount",
-                            "type": "integer",
-                            "value": 0
+                            "name": "message",
+                            "type": "string",
+                            "value": "Service Initiation for @{variables('userName')} to @{variables('destination')} is waiting for your approval"
                         }
                     ]
                 },
                 "runAfter": {
-                    "Send_approval_email": [
+                    "approvalEmails": [
                         "Succeeded"
                     ]
                 }
             },
-            "Initialize_variable_5": {
+            "emailAddress": {
                 "type": "InitializeVariable",
                 "inputs": {
                     "variables": [
                         {
-                            "name": "approvalStatus",
-                            "type": "integer",
-                            "value": 0
+                            "name": "emailAddress",
+                            "type": "string"
                         }
                     ]
                 },
                 "runAfter": {
-                    "Initialize_variable_8": [
+                    "message": [
                         "Succeeded"
                     ]
                 }
