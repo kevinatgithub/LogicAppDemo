@@ -51,31 +51,33 @@
                     ]
                 }
             },
-            "HTTP": {
-                "type": "Http",
+            "Response": {
+                "type": "Response",
+                "kind": "http",
                 "inputs": {
-                    "method": "POST",
-                    "uri": "http://localhost:7071/api/Send-Approval/triggers/manual/invoke?api-version=2020-05-01-preview&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=PRABTrN2bHrP2fyzPY416HdkEFQliGT40Yhkc5Sznuo",
+                    "statusCode": 200,
+                    "body": "@outputs('Invoke_a_workflow_in_this_workflow_app')?['body']"
+                },
+                "runAfter": {
+                    "Invoke_a_workflow_in_this_workflow_app": [
+                        "Succeeded"
+                    ]
+                }
+            },
+            "Invoke_a_workflow_in_this_workflow_app": {
+                "type": "Workflow",
+                "inputs": {
+                    "host": {
+                        "workflow": {
+                            "id": "Send-Approval"
+                        }
+                    },
                     "body": {
                         "serviceInitiationId": "@variables('serviceInitiationId')"
                     }
                 },
                 "runAfter": {
                     "Initialize_variable": [
-                        "Succeeded"
-                    ]
-                }
-            },
-            "Response": {
-                "type": "Response",
-                "kind": "http",
-                "inputs": {
-                    "statusCode": "@outputs('HTTP')['statusCode']",
-                    "headers": "@outputs('HTTP')['headers']",
-                    "body": "@body('HTTP')"
-                },
-                "runAfter": {
-                    "HTTP": [
                         "Succeeded"
                     ]
                 }

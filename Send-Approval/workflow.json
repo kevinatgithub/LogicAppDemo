@@ -29,12 +29,12 @@
                     }
                 },
                 "runAfter": {
-                    "Initialize_variable": [
+                    "userId": [
                         "Succeeded"
                     ]
                 }
             },
-            "Initialize_variable": {
+            "userId": {
                 "type": "InitializeVariable",
                 "inputs": {
                     "variables": [
@@ -68,7 +68,7 @@
                     ]
                 }
             },
-            "Initialize_variable_2": {
+            "destination": {
                 "type": "InitializeVariable",
                 "inputs": {
                     "variables": [
@@ -235,24 +235,6 @@
                 "type": "Foreach",
                 "foreach": "@variables('approvalEmails')",
                 "actions": {
-                    "HTTP": {
-                        "type": "Http",
-                        "inputs": {
-                            "method": "POST",
-                            "uri": "http://localhost:7071/api/Send-Approval-Handle-Response/triggers/manual/invoke?api-version=2020-05-01-preview&sp=%2Ftriggers%2Fmanual%2Frun&sv=1.0&sig=OXHiIZ9r1gQ-bibohoUcan1NHGRM2_kdZ737APcJRnY",
-                            "body": {
-                                "serviceInitiationId": "@triggerBody()?['serviceInitiationId']",
-                                "userId": "@variables('userId')",
-                                "emailAddress": "@{items('For_each')}",
-                                "message": "@{variables('message')}"
-                            }
-                        },
-                        "runAfter": {
-                            "Set_variable": [
-                                "Succeeded"
-                            ]
-                        }
-                    },
                     "Set_variable": {
                         "type": "SetVariable",
                         "inputs": {
@@ -260,6 +242,27 @@
                             "value": "@{items('For_each')}"
                         },
                         "runAfter": {}
+                    },
+                    "Invoke_SendApproval": {
+                        "type": "Workflow",
+                        "inputs": {
+                            "host": {
+                                "workflow": {
+                                    "id": "Send-Approval-Handle-Response"
+                                }
+                            },
+                            "body": {
+                                "emailAddress": "@items('For_each')",
+                                "serviceInitiationId": "@triggerBody()?['serviceInitiationId']",
+                                "message": "@variables('message')",
+                                "userId": "@variables('userId')"
+                            }
+                        },
+                        "runAfter": {
+                            "Set_variable": [
+                                "Succeeded"
+                            ]
+                        }
                     }
                 },
                 "runAfter": {
